@@ -49,7 +49,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .authorizeRequests()
                 .antMatchers("/api/auth").permitAll()
-                .antMatchers("api/test").hasAuthority(Permissions.USER_MANAGEMENT.name())
+                .antMatchers("/api/test").hasAuthority(Permissions.USER_MANAGEMENT.name())
                 .anyRequest().denyAll()
                 .and()
                 .httpBasic().disable()
