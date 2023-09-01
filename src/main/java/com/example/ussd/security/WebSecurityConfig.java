@@ -33,7 +33,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
             corsConfig.addAllowedMethod(HttpMethod.POST);
             corsConfig.addAllowedMethod(HttpMethod.GET);
             corsConfig.addAllowedMethod(HttpMethod.DELETE);
-            corsConfig.setAllowedOrigins(Arrays.asList("https://172.16.32.37:2233", "https://197.243.3.212:2244"));
+//            corsConfig.setAllowedOrigins(Arrays.asList("https://172.16.32.37:2233", "https://197.243.3.212:2244"));
             return corsConfig;
         }
     }
@@ -48,8 +48,9 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .securityContextRepository(securityCtxRepository)
                 .and()
                 .authorizeRequests()
-                .antMatchers("/api/auth").permitAll()
+                .antMatchers("/api/auth/").permitAll()
                 .antMatchers("/api/test").hasAuthority(Permissions.USER_MANAGEMENT.name())
+                .antMatchers("/api/otp").hasAuthority(Permissions.OTP_SUBMIT.name())
                 .anyRequest().denyAll()
                 .and()
                 .httpBasic().disable()

@@ -1,12 +1,15 @@
 package com.example.ussd.controller;
 
 
+import com.example.ussd.model.Otp;
 import com.example.ussd.model.SimpleUserAuth;
+import com.example.ussd.security.AuthenticatedUser;
 import com.example.ussd.service.AuthenticationService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -23,6 +26,11 @@ public class MainController {
     @PostMapping("/api/auth")
     public ResponseEntity<?> auth(@RequestBody @Valid SimpleUserAuth userAuth, HttpServletRequest request) {
         return new ResponseEntity<>(authenticationService.authenticateUser(userAuth, request), HttpStatus.OK);
+    }
+
+    @PostMapping("/api/otp")
+    public ResponseEntity<?> verifyOtp(@AuthenticationPrincipal AuthenticatedUser authenticatedUser, @RequestBody @Valid Otp otp, HttpServletRequest request) {
+        return new ResponseEntity<>(authenticationService.authenticateOTP(authenticatedUser.getId(), otp,request), HttpStatus.OK);
     }
 
     @PostMapping("/api/test")

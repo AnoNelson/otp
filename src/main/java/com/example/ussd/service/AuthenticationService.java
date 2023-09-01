@@ -2,16 +2,20 @@ package com.example.ussd.service;
 
 
 import com.example.ussd.exceptions.AuthException;
-import com.example.ussd.model.SimpleUserAuth;
-import com.example.ussd.model.TokenResponse;
-import com.example.ussd.model.UserCore;
+import com.example.ussd.model.*;
 import com.example.ussd.repository.UserRepository;
 import com.example.ussd.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +31,7 @@ public class AuthenticationService {
         return data != null;
     }
 
-    public TokenResponse authenticateUser(SimpleUserAuth userAuth, HttpServletRequest request) {
+    public OtpResponse authenticateUser(SimpleUserAuth userAuth, HttpServletRequest request) {
         UserCore userCore = userCoreRepo.findByUsername(userAuth.getUsername());
         if (userCore == null)
             throw new AuthException("User not found");
@@ -44,9 +48,18 @@ public class AuthenticationService {
         }
         userCore.setRisk(0);
         userCoreRepo.save(userCore);
-
         jwtService.clearExpiredKeys();
-        String token = jwtService.generateToken(userCore, request);
-        return new TokenResponse(token,"success");
+        Map<String, String> tokenMap = jwtService.generateTemporaryTokenForOTP(userCore, request);
+        String token = tokenMap.keySet().stream().findFirst().orElse(null);
+        return new OtpResponse(token,OtpResponse.Action.OTP.name());
     }
+
+    public OtpResponse authenticateOTP(String userId, Otp otp, HttpServletRequest request) {
+        UserCore userCore = userCoreRepo.getById(userId);
+        String token = jwtService.authenticateJwtOtp(userCore, userId, otp.getOtp(), request);
+        return !userCore.isFirstAuth()
+                ? new OtpResponse(token, OtpResponse.Action.CONTINUE.name())
+                : new OtpResponse(token, OtpResponse.Action.CHANGE_PASSWORD.name());
+    }
+
 }

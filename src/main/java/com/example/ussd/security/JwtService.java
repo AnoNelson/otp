@@ -4,10 +4,14 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.example.ussd.exceptions.AuthForbiddenException;
 import com.example.ussd.exceptions.InvalidRequestOrigin;
 import com.example.ussd.exceptions.InvalidSubjectException;
+import com.example.ussd.exceptions.ResponseException;
+import com.example.ussd.model.Permissions;
 import com.example.ussd.model.UserCore;
 import lombok.Builder;
+import org.apache.catalina.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
@@ -15,6 +19,7 @@ import org.springframework.stereotype.Service;
 import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,10 +32,11 @@ public class JwtService {
     private final String CLAIM_USERNAME = "username";
     private final String letters = "abcdefghijklmpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private final String numbers = "0123456789";
+    private final int MAX_OTP_TRIES = 4;
     private final String specials = "!@#&*()-=_+[]<>?:";
     private final List<String> types = Arrays.asList(letters, numbers, specials);
 
-    private final Map<String, JWTData> jwtMapping = new HashMap<>();
+    public final Map<String, JWTData> jwtMapping = new HashMap<>();
 
 
     @Builder
@@ -38,9 +44,9 @@ public class JwtService {
         public String key;
         public String address;
         public String otp;
+        public int tries;
         public Date expirationDate;
     }
-
     public int clearExpiredKeys() {
         Date current = new Date();
         int count = 0;
@@ -68,6 +74,29 @@ public class JwtService {
             builder.append(temp.charAt(rand.nextInt(temp.length())));
         }
         return builder.toString();
+    }
+    public Map<String, String> generateTemporaryTokenForOTP(UserCore userCore, HttpServletRequest request) {
+        String otp = UserCore.GENERATE_OTP();
+        Date expirationDate = new Date(System.currentTimeMillis() + LONGEVITY_OTP);
+        String token = performGenerateToken(userCore.getId(), userCore.getUsername(), List.of(new SimpleGrantedAuthority(Permissions.OTP_SUBMIT.name())), expirationDate, otp, request);
+        return Map.of(token, otp);
+    }
+
+    public String authenticateJwtOtp(UserCore userBase,String id, String otp, HttpServletRequest request) {
+        JWTData jwtData = jwtMapping.get(id);
+
+        if (jwtData == null) throw new AuthForbiddenException("Max tries.");
+        if (jwtData.otp == null || !jwtData.otp.equals(otp)) {
+            jwtData.tries++;
+            if (jwtData.tries >= MAX_OTP_TRIES)
+                jwtMapping.remove(id);
+            throw new ResponseException("Invalid OTP");
+        }
+        Date expirationDate = new Date(System.currentTimeMillis() + LONGEVITY_JWT);
+        List<SimpleGrantedAuthority> authorities = !userBase.isFirstAuth()
+                ? userBase.getAuthorityList()
+                : Collections.singletonList(new SimpleGrantedAuthority(Permissions.PASSWORD_RESET.name()));
+        return performGenerateToken(userBase.getId(), userBase.getUsername(), authorities, expirationDate, null, request);
     }
 
     public DecodedJWT validate(String token, String address) {
@@ -110,10 +139,7 @@ public class JwtService {
     }
 
     public String performGenerateToken(String userId, String username, List<SimpleGrantedAuthority> authorities, Date expirationDate, String otp, HttpServletRequest request) {
-//        List<String> ff = request.getHeaders().get("X-FORWARDED-FOR");
         String inetSocketAddress = request.getRemoteAddr();
-//        InetAddress inetSocketAddress = request.getRemoteAddress().getAddress();
-
         if (inetSocketAddress == null)
             return null;
         String address = inetSocketAddress;

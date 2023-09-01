@@ -9,10 +9,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.text.DecimalFormat;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -74,4 +72,9 @@ public class UserCore {
     public String getAuthorities() {
         return permissions;
     }
+
+    public static String GENERATE_OTP() {
+        return new DecimalFormat("000000").format(new Random().nextInt(999999));
+    }
+
 }

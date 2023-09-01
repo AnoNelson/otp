@@ -3,7 +3,7 @@ package com.example.ussd.model;
 import java.util.Arrays;
 
 public enum Permissions {
-    USER_MANAGEMENT, VIEW_DASHBOARD;
+    USER_MANAGEMENT, VIEW_DASHBOARD,PASSWORD_RESET,OTP_SUBMIT;
 
     public static final String GET_PERMISSION(String role) {
         if (Permissions.valueOf(role.toUpperCase()) != null &&
